@@ -47,6 +47,7 @@
 #include "definitions.h"
 #include "device.h"
 #include "buttons.h"
+#include "led.h"
 
 
 
@@ -242,9 +243,10 @@ void SYS_Initialize_Min ( void* data )
 
     GPIO_Initialize();
 
-    BSP_Initialize();
+    //BSP_Initialize();
     
     buttons_init();
+    led_init();
 
 	/* Enable global interrupts */
     __builtin_enable_interrupts();
