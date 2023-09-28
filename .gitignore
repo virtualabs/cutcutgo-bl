@@ -53,5 +53,8 @@ dkms.conf
 
 # Ignore MPLAB files that may leak some file paths
 cutcutgo_bl.X/build
+cutcutgo_bl.X/debug
 cutcutgo_bl.X/dist
 cutcutgo_bl.X/nbproject/private
+cutcutgo_bl.X/.generated_files
+
