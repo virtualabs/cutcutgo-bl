@@ -9,6 +9,8 @@
 #include "system/system_module.h"
 #include "driver/driver_common.h"
 #include "fat12.h"
+#include "led.h"
+#include "reset.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -30,7 +32,7 @@ typedef struct uf2_block {
     uint32_t payloadSize;
     uint32_t blockNo;
     uint32_t numBlocks;
-    uint32_t fileSize; // or familyID;
+    uint32_t familyID; // or fileSize
     uint8_t data[476];
     uint32_t magicEnd;
 } uf2_block_t;
@@ -105,6 +107,11 @@ static uintptr_t gFat12_TransferHandlerContext = 0;
 static uintptr_t gFat12_BlockStartAddress = 0;
 
 static uint8_t page_buffer[4096];
+
+/* UF2 block tracking. */
+static uint32_t g_blocks_written = 0;
+static uint32_t g_nb_blocks_expected = 0;
+
 
 static uint8_t g_fake_fat[512] = {
     0xF8, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -387,48 +394,75 @@ void DRV_FAT12_AsyncEraseWrite
         memcpy(g_fake_fat, sourceBuffer, 512);
     }
     else
-    {
+    {        
         /* Consider our buffer as a UF2 block. */
         uf2_block_t *uf2_block = (uf2_block_t *)sourceBuffer;
 
         /* Make sure we have an UF2 block. */
         if ((uf2_block->magicStart0 == UF2_MAGIC0) && 
             (uf2_block->magicStart1 == UF2_MAGIC1) && 
-            (uf2_block->magicEnd == UF2_MAGICEND)
+            (uf2_block->magicEnd == UF2_MAGICEND) &&
+            (uf2_block->familyID == UF2_FAMILYID)
         ) {
-            /* Write the UF2 block in flash memory (synchronous). */
-            target_addr = uf2_block->targetAddr - 0x1D010000;
-            
-            page_number = target_addr / 4096;
-            block_addr = page_number * 4096; /* Compute flash address */
-            block_offset = target_addr & 0x00000FFF;
-
-            while(NVM_IsBusy());
-
-            /* Read 4096 bytes at address `block_addr`. */
-            NVM_Read((uint32_t *)page_buffer, 4096, 0x9d010000 + block_addr);
-            while(NVM_IsBusy());
-
-            /* Update page buffer with our data. */
-            memcpy(&page_buffer[block_offset], uf2_block->data, 256);
-
-            NVM_PageErase(0x9d010000 + block_addr);
-            while(NVM_IsBusy());
-
-            /* Write modified page buffer to Flash. */
-            for (i=0; i<8; i++)
+            /* Track UF2 blocks. */
+            if (g_nb_blocks_expected == 0)
             {
-                NVM_RowWrite((uint32_t *)&page_buffer[i*512], 0x9d010000 + block_addr + i*512);
+                g_nb_blocks_expected = uf2_block->numBlocks;
+                g_blocks_written = 0;
+            }
+            
+            /* Make sure we are going to overwrite the application memory. */
+            if ((uf2_block->targetAddr >= 0x1D010000) && (uf2_block->targetAddr < 0x1D080000))
+            {
+
+                /* Write the UF2 block in flash memory (synchronous). */
+                target_addr = uf2_block->targetAddr - 0x1D010000;
+
+                page_number = target_addr / 4096;
+                block_addr = page_number * 4096; /* Compute flash address */
+                block_offset = target_addr & 0x00000FFF;
+
+                while(NVM_IsBusy());
+
+                /* Read 4096 bytes at address `block_addr`. */
+                NVM_Read((uint32_t *)page_buffer, 4096, 0x9d010000 + block_addr);
+                while(NVM_IsBusy());
+
+                /* Update page buffer with our data. */
+                memcpy(&page_buffer[block_offset], uf2_block->data, 256);
+
+                NVM_PageErase(0x9d010000 + block_addr);
+                while(NVM_IsBusy());
+
+                /* Write modified page buffer to Flash. */
+                for (i=0; i<8; i++)
+                {
+                    NVM_RowWrite((uint32_t *)&page_buffer[i*512], 0x9d010000 + block_addr + i*512);
+                    while (NVM_IsBusy());
+                }
+
+                /* Wait for page to be written. */
                 while (NVM_IsBusy());
+
+                /* Read 4096 bytes at address `block_addr`. */
+                NVM_Read((uint32_t *)page_buffer, 512, 0x9d010000 + block_addr);
+                while(NVM_IsBusy());
+
+                /* Make updown LED blink and set power to purple. */
+                led_toggle_updown();
+                led_set_power(true, false, true);
             }
 
-            /* Wait for page to be written. */
-            while (NVM_IsBusy());
+            /* Are we done ? */
+            g_blocks_written++;
+            if (g_blocks_written >= g_nb_blocks_expected)
+            {
+                /* We wrote all the blocks, restart ! */
+                led_set_power(false, false, true);
+                led_set_updown(true);
 
-            /* Read 4096 bytes at address `block_addr`. */
-            NVM_Read((uint32_t *)page_buffer, 512, 0x9d010000 + block_addr);
-            while(NVM_IsBusy());
-
+                reset_soft();
+            }
         }
     }
     
@@ -488,4 +522,9 @@ uintptr_t DRV_FAT12_AddressGet
 )
 {
     return gFat12_BlockStartAddress;
+}
+
+bool is_fat12_upload_started(void)
+{
+    return (g_nb_blocks_expected != 0);
 }

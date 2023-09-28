@@ -21,6 +21,7 @@ typedef SYS_MEDIA_BLOCK_COMMAND_HANDLE  DRV_MEMORY_COMMAND_HANDLE;
 #define UF2_MAGIC0      0x0A324655
 #define UF2_MAGIC1      0x9E5D5157
 #define UF2_MAGICEND    0x0AB16F30
+#define UF2_FAMILYID    0x4d414b52 /* "MAKR" */
 
 DRV_HANDLE DRV_FAT12_Open
 (
@@ -94,6 +95,8 @@ uintptr_t DRV_FAT12_AddressGet
 (
     const DRV_HANDLE handle
 );
+
+bool is_fat12_upload_started(void);
 
 #ifdef	__cplusplus
 }

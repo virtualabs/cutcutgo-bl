@@ -51,10 +51,12 @@
 #include "definitions.h"                // SYS function prototypes
 
 #include "buttons.h"
-
+#include "led.h"
 
 #define  APP_ADDR               0x9d010000
 #define WORD_ALIGN_MASK         (~(sizeof(uint32_t) - 1))
+
+uint32_t pwr_counter=0;
 
 /**
  * @brief Launch the application.
@@ -113,8 +115,27 @@ int main ( void )
     /* Initialize all modules */
     SYS_Initialize_Min( NULL );
     
+    /* Wait for power button to be pressed. */
+    while (1)
+    {
+        if (is_power_button_pressed())
+        {
+            pwr_counter++;
+            
+            /* Power button must be pressed during ~3 seconds. */
+            if (pwr_counter >= 0x442000)
+            {
+                break;
+            }
+        }
+    }
+    
     if (IsUsbMsdTriggered())
     {
+        /* Switch on LEDs. */
+        led_set_power(false, false, true);
+        led_set_updown(true);
+                
         SYS_Initialize_Remaining( NULL );
 
         while ( true )

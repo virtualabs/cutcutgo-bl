@@ -26,3 +26,11 @@ bool is_pause_button_pressed(void)
     return ((portb & (1 << (BTN_PAUSE & 0x0F))) == 0);
 }
 
+bool is_power_button_pressed(void)
+{
+    volatile uint32_t portf = PORTF;
+    
+    /* Is pause button pressed ? */
+    return ((portf & (1 << (BTN_POWER & 0x0F))) == 0);
+}
+

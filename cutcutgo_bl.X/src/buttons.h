@@ -20,6 +20,7 @@ extern "C" {
 
 void buttons_init(void);
 bool is_pause_button_pressed(void);
+bool is_power_button_pressed(void);
 
 #ifdef	__cplusplus
 }
