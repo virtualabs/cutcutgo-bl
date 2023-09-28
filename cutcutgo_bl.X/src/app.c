@@ -54,6 +54,9 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // *****************************************************************************
 
 #include "app.h"
+#include "fat12.h"
+#include "led.h"
+#include "reset.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -77,7 +80,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 */
 
 APP_DATA appData;
-
+uint32_t counter = 0;
 
 // *****************************************************************************
 // *****************************************************************************
@@ -109,20 +112,12 @@ void APP_USBDeviceEventHandler( USB_DEVICE_EVENT event, void * pEventData, uintp
     {
         case USB_DEVICE_EVENT_RESET:
         case USB_DEVICE_EVENT_DECONFIGURED:
-
-            /* Device was reset or de-configured. Update LED status */
-            LED_Off();
             break;
 
         case USB_DEVICE_EVENT_CONFIGURED:
-
-            /* Device is configured. Update LED status */
-            LED_On();
             break;
 
         case USB_DEVICE_EVENT_SUSPENDED:
-		
-			LED_Off();
             break;
 
         case USB_DEVICE_EVENT_POWER_DETECTED:
@@ -135,7 +130,6 @@ void APP_USBDeviceEventHandler( USB_DEVICE_EVENT event, void * pEventData, uintp
 
             /* VBUS is not detected. Detach the device */
             USB_DEVICE_Detach(appDataObject->usbDeviceHandle);
-            LED_Off();
             break;
 
         /* These events are not used in this demo */
@@ -214,9 +208,26 @@ void APP_Tasks ( void )
 
         case APP_STATE_RUNNING:
 
-            /* The MSD Device is maintained completely by the MSD function
-             * driver and does not require application intervention. So there
-             * is nothing related to MSD Device to do here. */
+            /* If power is pressed, reset the device. */
+            if (!is_fat12_upload_started())
+            {
+                if (is_power_button_pressed())
+                {
+                    counter++;
+
+                    /* Check again. */
+                    if (counter > 0xda0cd)
+                    {
+                        led_set_power(false, false, false);
+                        led_set_updown(false);
+
+                        /* Reset. */
+                        reset_soft();
+                    }
+                }
+                else
+                    counter=0;
+            }
             break;
 
         /* The default state should never be executed. */

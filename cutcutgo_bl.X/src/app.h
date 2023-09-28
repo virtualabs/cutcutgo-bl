@@ -62,6 +62,8 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "usb/usb_chapter_9.h"
 #include "usb/usb_device.h"
 
+#include "buttons.h"
+
 // *****************************************************************************
 // *****************************************************************************
 // Section: Type Definitions
