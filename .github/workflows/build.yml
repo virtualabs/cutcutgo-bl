@@ -1,27 +1,43 @@
-name: Build firmware binaries
-on: [push, pull_request]
+name: Release Cutcutgo Bootloader
+on: 
+  push:
+    tags:
+      - '*'
 
 jobs:
   build:
-    name: Build project
+    name: Release Cutcutgo Bootloader
     runs-on: ubuntu-latest
     steps:
-      - name: Download source
+      - name: Download bootloader sources
         uses: actions/checkout@v3
 
-      - name: Build binaries
+      - name: Build bootloader binaries
         uses: Rockman18/ghactions-mplabx@master
         with:
           project: cutcutgo_bl.X
-          configuration: cutcutgo-bl
+          configuration: cutcutgo_bl
 
-      - name: Move binaries
-        run: mkdir output && cp cutcutgo_bl.X/dist/cutcutgo-bl/production/cutcutgo-bl.X.production.hex output/cutcutgo_bootloader_for_maker1.hex
+      - name: Move generated files
+        run: mkdir output && cp ./cutcutgo_bl.X/dist/cutcutgo_bl/production/cutcutgo_bl.X.production.hex ./output/cutcutgo_bootloader_for_maker1.hex
 
-      - name: Upload firmware binaries
-        uses: actions/upload-artifact@v3
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
         with:
-          name: cutcutgo_bootloader_for_maker1.hex
-          path: output/cutcutgo_bootloader_for_maker1.hex
-          if-no-files-found: error
+          draft: false
+          prerelease: false
+          release_name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Upload bootloader artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./output/cutcutgo_bootloader_for_maker1.hex
+          asset_name: cutcutgo_bootloader_for_maker1.hex
+          asset_content_type: application/octet-stream
