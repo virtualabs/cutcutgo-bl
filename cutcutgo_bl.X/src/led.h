@@ -12,7 +12,14 @@
 #define     LED_PWR_BLUE    GPIO_PIN_RE4
 
 
+/**
+ * Exported functions
+ **/
+
+/* LED initialization. */
 void led_init(void);
+
+/* LED switch on/off. */
 void led_set_logo(bool enable);
 void led_set_pause(bool enable);
 void led_set_power(bool blue, bool white, bool red);

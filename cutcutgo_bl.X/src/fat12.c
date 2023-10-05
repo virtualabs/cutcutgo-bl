@@ -23,6 +23,10 @@
  *************************************************/
 #define DRV_MEMORY_DEVICE_START_ADDRESS      0x9d010000
 
+/**
+ * UF2 structures.
+ */
+
 typedef struct uf2_block {
     // 32 byte header
     uint32_t magicStart0;
@@ -36,6 +40,10 @@ typedef struct uf2_block {
     uint8_t data[476];
     uint32_t magicEnd;
 } uf2_block_t;
+
+/**
+ * FAT12 emulation
+ */
 
 typedef struct {
     uint8_t flags;
@@ -97,10 +105,11 @@ typedef struct __attribute__((packed)) {
     uint32_t    file_size;
 } fat12_rootdir_t;
 
-static unsigned char *fat12_volume = (unsigned char *)DRV_MEMORY_DEVICE_START_ADDRESS;
-//static unsigned char sector[512];
+/**
+ * Globals
+ */
 
-//static DRV_MEMORY_OBJECT gDrvFat12Obj[DRV_MEMORY_INSTANCES_NUMBER];
+static unsigned char *fat12_volume = (unsigned char *)DRV_MEMORY_DEVICE_START_ADDRESS;
 
 static DRV_MEMORY_TRANSFER_HANDLER gFat12_TransferHandler = NULL;
 static uintptr_t gFat12_TransferHandlerContext = 0;
@@ -112,6 +121,14 @@ static uint8_t page_buffer[4096];
 static uint32_t g_blocks_written = 0;
 static uint32_t g_nb_blocks_expected = 0;
 
+/**
+ * This is a fake directory sector used as a read/write region. The remote host can write
+ * any file/directory metadata without raising any error and being persistent (well, kind of,
+ * only when the device is powered up).
+ * 
+ * This small trick allows the UF2 flash routine to focus on UF2 block erase/write operations and
+ * not to care about FAT-related writes.
+ */
 
 static uint8_t g_fake_fat[512] = {
     0xF8, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -148,6 +165,10 @@ static uint8_t g_fake_fat[512] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 
+/**
+ * Our emulated disk geometry (512 KB).
+ */
+
 static SYS_MEDIA_REGION_GEOMETRY gFat12_GeometryTable[] = {
     {
         .blockSize = 512,
@@ -159,6 +180,11 @@ static SYS_MEDIA_REGION_GEOMETRY gFat12_GeometryTable[] = {
     }
 };
 
+
+/**
+ * We don't support asynchronous read/write.
+ */
+
 static SYS_MEDIA_GEOMETRY gFat12_MediaGeometry = {
     .mediaProperty = SYS_MEDIA_READ_IS_BLOCKING | SYS_MEDIA_WRITE_IS_BLOCKING,
     .numReadRegions = 1,
@@ -167,9 +193,18 @@ static SYS_MEDIA_GEOMETRY gFat12_MediaGeometry = {
     .geometryTable = gFat12_GeometryTable,
 };
 
+
 /***
  * FAT12 metadata generation routines
  ***/
+
+/**
+ * FAT12 MBR generation
+ * 
+ * Fill the provided buffer with our fake MBR.
+ * 
+ * @param buffer    Buffer corresponding to the MBR sector that is read
+ */
 
 void DRV_FAT12_GenerateMBR(unsigned char *buffer)
 {
@@ -186,6 +221,14 @@ void DRV_FAT12_GenerateMBR(unsigned char *buffer)
     p_mbr->signature[1] = 0xAA;
 }
 
+/**
+ * FAT12 Volmume Record generation
+ * 
+ * Fill the provided buffer with our fake volume record
+ * 
+ * @param buffer    Buffer corresponding to the volume record sector that is read
+ */
+
 void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
 {
     fat12_vbr_t *p_vbr = (fat12_vbr_t *)buffer;
@@ -198,7 +241,7 @@ void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
     p_vbr->jump[2] = 0x90;
     memcpy(p_vbr->oem_name, "MSDOS5.0", 8);
     p_vbr->bytes_per_sector = 512;
-    p_vbr->sectors_per_cluster = 4;
+    p_vbr->sectors_per_cluster = 4;     /* Allows us to have a single sector FAT table. */
     p_vbr->reserved_sector_count = 1;
     p_vbr->num_fats = 1;
     p_vbr->num_root_entries_max = 16;
@@ -208,7 +251,7 @@ void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
     p_vbr->sectors_per_track = 0x20;
     p_vbr->num_heads = 0x40;
     p_vbr->hidden_sectors = 0;
-    p_vbr->total_sectors_32 = 0; /* A adapter en fonction de la taille globale. */
+    p_vbr->total_sectors_32 = 0;
     
     p_vbr->bios_int13 = 0x80;
     p_vbr->reserved = 0;
@@ -220,6 +263,15 @@ void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
     p_vbr->signature[0] = 0x55;
     p_vbr->signature[1] = 0xAA;
 }
+
+
+/**
+ * FAT12 Root directory generation
+ * 
+ * Fill the provided buffer with our fake root directory.
+ * 
+ * @param buffer    Buffer corresponding to the root directory sector that is read
+ */
 
 void DRV_FAT12_GenerateRootDirectory(unsigned char *buffer)
 {
@@ -257,6 +309,17 @@ void DRV_FAT12_Close
 {
 }
 
+
+/**
+ * Asynchronous sector read
+ * 
+ * @param handle        Driver handle (emulated, we don't care :P )
+ * @param commandHandle Required to handle async operations (we don't care too :P)
+ * @param targetBuffer  Buffer that will receive the data
+ * @param blockStart    Block number the host wants to read from
+ * @param nBlock        Number of blocks to read (basically, 1)
+ */
+
 void DRV_FAT12_AsyncRead
 (
     const DRV_HANDLE handle,
@@ -268,6 +331,7 @@ void DRV_FAT12_AsyncRead
 {
     int offset = 0;
     
+    /* If the host tries to read our MBR, generate it on-the-fly. */
     if ((blockStart == 0) && (nBlock > 0))
     {
         /* Generate MBR */
@@ -277,6 +341,7 @@ void DRV_FAT12_AsyncRead
         offset += 512;
     }
     
+    /* If the host tries to read our Volume Record, generate it on-the-fly. */
     if ((blockStart == 1) && (nBlock > 0))
     {
         /* Generate Volume Boot Record*/
@@ -286,6 +351,7 @@ void DRV_FAT12_AsyncRead
         offset += 512;
     }
     
+    /* If the host tries to read our FAT tabke, redirect to our fake FAT. */
     if ((blockStart == 2) && (nBlock > 0))
     {
         /* Generate a fake FAT sector. */
@@ -293,6 +359,7 @@ void DRV_FAT12_AsyncRead
         memcpy(&((unsigned char *)targetBuffer)[offset], g_fake_fat, 512);
     }
     
+    /* If the host tries to read our root directory, generate on-the-fly. */
     if ((blockStart == 3) && (nBlock > 0))
     {
         /* Generate root directory. */
@@ -302,6 +369,7 @@ void DRV_FAT12_AsyncRead
         offset += 512;
     }
 
+    /* If the host tries to read any other block, return a buffer full of zeroes =) . */
     if (nBlock > 0)
     {
         /* Handle block read. */
@@ -320,6 +388,19 @@ void DRV_FAT12_AsyncRead
         );
     }
 }
+
+/**
+ * Handle an asynchronous write.
+ * 
+ * In fact, this function is never called, because most systems prefer using
+ * an AsyncEraseWrite rather than AsyncWrite alone.
+ * 
+ * @param handle
+ * @param commandHandle
+ * @param sourceBuffer
+ * @param blockStart
+ * @param nBlock
+ */
 
 void DRV_FAT12_AsyncWrite
 (
@@ -355,6 +436,17 @@ void DRV_FAT12_AsyncWrite
     }
 }
 
+/**
+ * Handle asynchronous block erase.
+ * 
+ * Well, we don't need that. Really.
+ * 
+ * @param handle
+ * @param commandHandle
+ * @param blockStart
+ * @param nBlock
+ */
+
 void DRV_FAT12_AsyncErase
 (
     const DRV_HANDLE handle,
@@ -375,6 +467,23 @@ void DRV_FAT12_AsyncErase
         );
     }
 }
+
+/**
+ * Handle an asynchronous erase-then-write operation.
+ * 
+ * This function is used to erase a 512-byte block and then write into it
+ * directly. This function is called each time the FAT is modified or when
+ * any file sector is written.
+ * 
+ * We expect UF2 blocks to be written through this function call, and handle
+ * Flash reprogramming for each of them.
+ * 
+ * @param handle            Driver handle (we don't care, remember ? :P )
+ * @param commandHandle     Command handle for asynchronous operation (don't care !)
+ * @param sourceBuffer      A 512 bytes buffer with the data we need to write to Flash
+ * @param blockStart        Block number to write
+ * @param nBlock            Number of blocks to write (basically, 1)
+ */
 
 void DRV_FAT12_AsyncEraseWrite
 (
@@ -479,6 +588,20 @@ void DRV_FAT12_AsyncEraseWrite
     }
 }
 
+/**
+ * Set the transfer handler callback.
+ * 
+ * This function is required to register a specific callback that must be called
+ * once a write/read operation has been done.
+ * 
+ * So since we are doing synchronous writes/reads, we just need to store this
+ * callback in a global variable.
+ * 
+ * @param handle
+ * @param transferHandler
+ * @param context
+ */
+
 void DRV_FAT12_TransferHandlerSet
 (
     const DRV_HANDLE handle,
@@ -491,6 +614,10 @@ void DRV_FAT12_TransferHandlerSet
     gFat12_TransferHandlerContext = context;
 }
 
+/**
+ * Return the drive geometry.
+ */
+
 SYS_MEDIA_GEOMETRY * DRV_FAT12_GeometryGet
 (
     const DRV_HANDLE handle
@@ -499,6 +626,10 @@ SYS_MEDIA_GEOMETRY * DRV_FAT12_GeometryGet
     return &gFat12_MediaGeometry;
 }
 
+/**
+ * Detect if the drive is attached (by default, always)
+ */
+
 bool DRV_FAT12_IsAttached
 (
     const DRV_HANDLE handle
@@ -506,6 +637,10 @@ bool DRV_FAT12_IsAttached
 {
    return true;
 }
+
+/**
+ * Detect if the drive is write-protected (by default, never)
+ */
 
 bool DRV_FAT12_IsWriteProtected
 (
@@ -516,6 +651,10 @@ bool DRV_FAT12_IsWriteProtected
     return false;
 }
 
+/**
+ * Return the Start block address.
+ */
+
 uintptr_t DRV_FAT12_AddressGet
 (
     const DRV_HANDLE handle
@@ -524,6 +663,12 @@ uintptr_t DRV_FAT12_AddressGet
     return gFat12_BlockStartAddress;
 }
 
+
+/**
+ * Check if an application upgrade is in progress.
+ * 
+ * @return true if we are writing an application into flash, false otherwise.
+ */
 bool is_fat12_upload_started(void)
 {
     return (g_nb_blocks_expected != 0);

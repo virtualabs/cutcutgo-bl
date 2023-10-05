@@ -56,10 +56,19 @@
 #define  APP_ADDR               0x9d010000
 #define WORD_ALIGN_MASK         (~(sizeof(uint32_t) - 1))
 
+
+/* Counter used as a timer emulation (for button press) */
 uint32_t pwr_counter=0;
 
 /**
  * @brief Launch the application.
+ * 
+ * This function checks if an application has been installed in Flash memory
+ * at address APP_ADDR, and transfer execution to it if present.
+ * 
+ * Before executing the application, we need to 'deinitialize' the system in
+ * order to disable some interrupts that are required by the USB driver in order
+ * not to interfere with the application startup code.
  */
 
 void launch_app(void)
@@ -83,6 +92,16 @@ void launch_app(void)
     fptr();
 }
 
+
+/**
+ * Check if we need to spawn a Mass-storage device (bootloader condition is met).
+ * 
+ * If no application is found in memory or if Pause button is pressed at startup,
+ * we must spawn a mass-storage device and proceed to a potential upgrade.
+ * 
+ * @return true if we must spawn a MSD, false otherwise.
+ */
+
 bool IsUsbMsdTriggered(void)
 {
     uint32_t dwApp = *(uint32_t *)(APP_ADDR);
@@ -97,12 +116,14 @@ bool IsUsbMsdTriggered(void)
     /* Pause button is pressed. */
     if (is_pause_button_pressed())
     {
+        /* We must spawn a MSD. */
         return true;
     }
     
     /* Default case: launch app. */
     return false;
 }
+
 
 // *****************************************************************************
 // *****************************************************************************

@@ -15,6 +15,7 @@
 extern "C" {
 #endif
 
+/* Software reset. */
 void reset_soft(void);
 
 

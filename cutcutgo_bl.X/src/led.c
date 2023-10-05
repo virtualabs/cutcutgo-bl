@@ -1,5 +1,9 @@
 #include "led.h"
 
+/**
+ * Cricut Maker led initialization routine.
+ */
+
 void led_init(void)
 {
     /* Force RE4 to digital I/O. */
@@ -23,6 +27,7 @@ void led_init(void)
     GPIO_PinClear(LED_PWR_BLUE);
     GPIO_PinClear(LED_UPDOWN);
 }
+
 
 /**
  * Set front panel logo LED state.
@@ -85,6 +90,7 @@ void led_set_power(bool blue, bool white, bool red)
     }
 }
 
+
 /**
  * Set front panel up/down LED state.
  * @param enable    true to switch on, false to switch off
@@ -99,9 +105,9 @@ void led_set_updown(bool enable)
     }
 }
 
+
 /**
  * Toggle front panel up/down LED state.
- * @param enable    true to switch on, false to switch off
  */
 
 void led_toggle_updown(void)

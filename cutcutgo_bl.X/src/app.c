@@ -206,27 +206,42 @@ void APP_Tasks ( void )
             break;
         }
 
+        /**
+         * When application is running, we must handle a specific condition in order to allow
+         * the user to perform a reset and start the application again. This is done by pressing
+         * the power button during ~4 seconds when no upload is in progress.
+         * 
+         * The MCU is reseted and will hold until a button is pressed, either starting the application
+         * or our emulated USB mass-storage device to perform an upgrade.
+         */
+
+        
         case APP_STATE_RUNNING:
 
-            /* If power is pressed, reset the device. */
+            /* If power button is pressed, reset the device, except if an upload is in progress. */
             if (!is_fat12_upload_started())
             {
                 if (is_power_button_pressed())
                 {
+                    /* Counter is incremented*/
                     counter++;
 
-                    /* Check again. */
+                    /* When counter reaches 0xda0ce, reset MCU (simili-timer). */
                     if (counter > 0xda0cd)
                     {
+                        /* Switch off Power LED and UpDown LED. */
                         led_set_power(false, false, false);
                         led_set_updown(false);
 
-                        /* Reset. */
+                        /* Software Reset ! */
                         reset_soft();
                     }
                 }
                 else
+                {
+                    /* Button has been released, reset counter. */
                     counter=0;
+                }
             }
             break;
 

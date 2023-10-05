@@ -1,5 +1,11 @@
 #include "reset.h"
 
+/**
+ * Performs a software reset.
+ * 
+ * This function drives the power controller in order to cause
+ * a reset of the MCU. 
+ */
 __attribute__((__noreturn__)) void reset_soft(void)
 {
     /* Software reset */
