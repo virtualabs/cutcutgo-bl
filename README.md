@@ -15,3 +15,6 @@ Only UF2 firmware files are supported by this bootloader, see (TODO) for officia
 
 The `cutcutgo_bl.X` folder contains a MPLABX project that can be used to build and program the bootloader.
 
+## How to download latest build
+
+You can found a up-to-date pre-compiled version of the bootloader on this [Release page](https://github.com/virtualabs/cutcutgo-bl/releases/tag/latest)

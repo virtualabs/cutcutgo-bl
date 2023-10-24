@@ -1,43 +1,49 @@
-name: Release Cutcutgo Bootloader
-on: 
+name: "Pre-release"
+
+on:
   push:
-    tags:
-      - '*'
+    branches:
+      - "main"
+    paths:
+      - "cutcutgo_bl.X/**"
+      - ".github/workflows/build.yml"
 
 jobs:
-  build:
-    name: Release Cutcutgo Bootloader
+  pre-release:
+    name: "Pre-release"
     runs-on: ubuntu-latest
-    steps:
-      - name: Download bootloader sources
-        uses: actions/checkout@v3
 
-      - name: Build bootloader binaries
+    env:
+      PROJECT_DIR: cutcutgo_bl.X
+      RELEASE_DIR: release
+      BOOTLOADER_NAME: Cutcutgo_maker1_bootloader.hex
+
+    steps:
+      - id: step1
+        name: Checkout sources
+        uses: actions/checkout@v4
+
+      - id: step2
+        name: Create release directory
+        run: mkdir $RELEASE_DIR
+
+      - id: step3
+        name: Build firmware
         uses: Rockman18/ghactions-mplabx@master
         with:
-          project: cutcutgo_bl.X
+          project: ${{ env.PROJECT_DIR }}
           configuration: cutcutgo_bl
 
-      - name: Move generated files
-        run: mkdir output && cp ./cutcutgo_bl.X/dist/cutcutgo_bl/production/cutcutgo_bl.X.production.hex ./output/cutcutgo_bootloader_for_maker1.hex
+      - id: step4
+        name: Move bootloader to release directory
+        run: cp $PROJECT_DIR/dist/cutcutgo_bl/production/cutcutgo_bl.X.production.hex $RELEASE_DIR/$BOOTLOADER_NAME
 
-      - name: Create release
-        uses: actions/create-release@v1
-        id: create_release
+      - id: step5
+        name: Create pre-release
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          draft: false
-          prerelease: false
-          release_name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Upload bootloader artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./output/cutcutgo_bootloader_for_maker1.hex
-          asset_name: cutcutgo_bootloader_for_maker1.hex
-          asset_content_type: application/octet-stream
+          repo_token: "${{ github.token }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: ${{ env.RELEASE_DIR }}/**
