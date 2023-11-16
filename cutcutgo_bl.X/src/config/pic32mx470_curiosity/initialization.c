@@ -58,7 +58,11 @@
 // ****************************************************************************
 
 /*** DEVCFG0 ***/
-#pragma config DEBUG =      ON
+#ifdef __DEBUG
+    #pragma config DEBUG =      ON
+#else
+    #pragma config DEBUG =      OFF
+#endif
 #pragma config JTAGEN =     OFF
 #pragma config ICESEL =     ICS_PGx1
 #pragma config PWP =        OFF
