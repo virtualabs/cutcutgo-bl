@@ -1,0 +1,49 @@
+name: "Pre-release"
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "cutcutgo_bl.X/**"
+      - ".github/workflows/build.yml"
+
+jobs:
+  pre-release:
+    name: "Pre-release"
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_DIR: cutcutgo_bl.X
+      RELEASE_DIR: release
+      BOOTLOADER_NAME: Cutcutgo_maker1_bootloader.hex
+
+    steps:
+      - id: step1
+        name: Checkout sources
+        uses: actions/checkout@v4
+
+      - id: step2
+        name: Create release directory
+        run: mkdir $RELEASE_DIR
+
+      - id: step3
+        name: Build firmware
+        uses: Rockman18/ghactions-mplabx@master
+        with:
+          project: ${{ env.PROJECT_DIR }}
+          configuration: cutcutgo_bl
+
+      - id: step4
+        name: Move bootloader to release directory
+        run: cp $PROJECT_DIR/dist/cutcutgo_bl/production/cutcutgo_bl.X.production.hex $RELEASE_DIR/$BOOTLOADER_NAME
+
+      - id: step5
+        name: Create pre-release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ github.token }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: ${{ env.RELEASE_DIR }}/**
