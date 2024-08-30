@@ -77,14 +77,35 @@ typedef struct __attribute__((packed)) {
     uint32_t    hidden_sectors;
     uint32_t    total_sectors_32;
     
+    /* FAT12/FAT16 custom structure. */
+#if 0
     uint8_t     bios_int13;
     uint8_t     reserved;
     uint8_t     extended_boot_sig;
     uint32_t    volume_serial;
     uint8_t     volume_name[11];
     uint8_t     fs_type[8];
+#endif
     
-    uint8_t     padding[448];
+    /* FAT32 custom structure (offset 36) */
+    uint32_t    fat_sz32;
+    uint16_t    ext_flags;
+    uint16_t    fs_ver;
+    uint32_t    root_cluster;
+    uint16_t    fs_info;
+    uint16_t    backup_boot;
+    uint8_t     reserved[12];
+    uint8_t     drive_num;
+    uint8_t     reserved1;
+    uint8_t     extended_boot_sig;
+    uint32_t    volume_serial;
+    uint8_t     volume_name[11];
+    uint8_t     fs_type[8];
+    
+    /* offset 36 + 54 */
+    
+    
+    uint8_t     padding[420];
     uint8_t     signature[2];
     
 } fat12_vbr_t;
@@ -104,6 +125,16 @@ typedef struct __attribute__((packed)) {
     uint16_t    first_cluster;
     uint32_t    file_size;
 } fat12_rootdir_t;
+
+typedef struct __attribute__((packed)) {
+    uint32_t    lead_sig;
+    uint8_t     reserved1[480];
+    uint32_t    struct_sig;
+    uint32_t    free_count;
+    uint32_t    next_free;
+    uint8_t     reserved2[12];
+    uint32_t    trail_sig;
+} fat32_fsinfo_t;
 
 /**
  * Globals
@@ -131,7 +162,7 @@ static uint32_t g_nb_blocks_expected = 0;
  */
 
 static uint8_t g_fake_fat[512] = {
-    0xF8, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+    0xF8, 0xFF, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF, 0x0F, 0xF8, 0xFF, 0xFF, 0x0F, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -172,11 +203,11 @@ static uint8_t g_fake_fat[512] = {
 static SYS_MEDIA_REGION_GEOMETRY gFat12_GeometryTable[] = {
     {
         .blockSize = 512,
-        .numBlocks = 1024,
+        .numBlocks = 0x208000,
     },
     {
         .blockSize = 512,
-        .numBlocks = 1024,
+        .numBlocks = 0x208000,
     }
 };
 
@@ -214,9 +245,15 @@ void DRV_FAT12_GenerateMBR(unsigned char *buffer)
     memset(buffer, 0, 512);
     
     p_mbr->partitions[0].flags = 0x80;
+    p_mbr->partitions[0].first_block_chs[0] = 0;
+    p_mbr->partitions[0].first_block_chs[1] = 2;
+    p_mbr->partitions[0].first_block_chs[2] = 0;
+    p_mbr->partitions[0].last_block_chs[0] = 161;
+    p_mbr->partitions[0].last_block_chs[1] = 58;
+    p_mbr->partitions[0].last_block_chs[2] = 32;
     p_mbr->partitions[0].lba = 1;
-    p_mbr->partitions[0].num_blocks = 0x36f;  /* A ajuster en fonction de la taille */
-    p_mbr->partitions[0].type= 1; 
+    p_mbr->partitions[0].num_blocks = 0x200000;  /* A ajuster en fonction de la taille */
+    p_mbr->partitions[0].type= 0x0C;
     p_mbr->signature[0] = 0x55;
     p_mbr->signature[1] = 0xAA;
 }
@@ -234,25 +271,27 @@ void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
     fat12_vbr_t *p_vbr = (fat12_vbr_t *)buffer;
     
     /* Fill buffer with the correct values. */
-    memset(buffer, 0, 36);
+    memset(buffer, 0, 90);
     
-    p_vbr->jump[0] = 0x90;
-    p_vbr->jump[1] = 0x90;
+    p_vbr->jump[0] = 0xEB;
+    p_vbr->jump[1] = 0x58;
     p_vbr->jump[2] = 0x90;
     memcpy(p_vbr->oem_name, "MSDOS5.0", 8);
     p_vbr->bytes_per_sector = 512;
-    p_vbr->sectors_per_cluster = 4;     /* Allows us to have a single sector FAT table. */
-    p_vbr->reserved_sector_count = 1;
-    p_vbr->num_fats = 1;
-    p_vbr->num_root_entries_max = 16;
-    p_vbr->total_sectors = 0x36F;
-    p_vbr->media_desc = 0xF8;
-    p_vbr->sectors_per_fat = 1;
-    p_vbr->sectors_per_track = 0x20;
-    p_vbr->num_heads = 0x40;
+    p_vbr->sectors_per_cluster = 8;     /* Allows us to have a single sector FAT table. */
+    p_vbr->reserved_sector_count = 32;   /* FAT12: 1*/
+    p_vbr->num_fats = 2;                /* NumFAT MUST be 2 (old FAT12 code: 1) */
+    p_vbr->num_root_entries_max = 0;    /* FAT12: 16 */
+    p_vbr->total_sectors = 0;           /* FAT32: must be 0 */
+    p_vbr->media_desc = 0xF8;           /* F8: non-removable media | F0: removable media */
+    p_vbr->sectors_per_fat = 0;         /* FAT12: 1 | FAT32: must be 0 */
+    p_vbr->sectors_per_track = 63;
+    p_vbr->num_heads = 64;
     p_vbr->hidden_sectors = 0;
-    p_vbr->total_sectors_32 = 0;
+    p_vbr->total_sectors_32 = 0x1ff000;    /* TODO: total number of sectors for FAT32 */
     
+#if 0
+    /* FAT12 specific code*/
     p_vbr->bios_int13 = 0x80;
     p_vbr->reserved = 0;
     memset(p_vbr->volume_name, 0x20, 11);
@@ -262,6 +301,42 @@ void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
     memcpy(p_vbr->fs_type, "FAT12   ", 8);
     p_vbr->signature[0] = 0x55;
     p_vbr->signature[1] = 0xAA;
+#endif
+    
+    /* FAT32 specific code. */
+    p_vbr->fat_sz32 = 2048;        /* Number of sectors per FAT table. */
+    p_vbr->ext_flags = 0;       /* runtime FAT mirroring. */
+    p_vbr->fs_ver = 0;          /* Version is 0:0 */
+    p_vbr->root_cluster = 2;    /* Root directory cluster number. */
+    p_vbr->fs_info = 1;         /* FSInfo sector number.  */
+    p_vbr->backup_boot = 6;     /* Sector #6 is used to mirror sector #0 */
+    p_vbr->drive_num = 0x80;
+    p_vbr->reserved1 = 0;
+    memset(p_vbr->volume_name, 0x20, 11);
+    memcpy(p_vbr->volume_name, "NO NAME    ", 11);
+    p_vbr->volume_serial = 0xBADF00D;
+    p_vbr->extended_boot_sig = 0x29;
+    memcpy(p_vbr->fs_type, "FAT32   ", 8);
+    p_vbr->signature[0] = 0x55;
+    p_vbr->signature[1] = 0xAA;
+}
+
+
+void DRV_FAT32_GenerateFSInfo(unsigned char *buffer)
+{
+    fat32_fsinfo_t *p_fsinfo = (fat32_fsinfo_t *)buffer;
+    
+    /* Fill buffer with the correct values. */
+    memset(buffer, 0, sizeof(fat32_fsinfo_t));
+    
+    /* Set signatures */
+    p_fsinfo->lead_sig = 0x41615252;
+    p_fsinfo->struct_sig = 0x61417272;
+    p_fsinfo->trail_sig = 0xAA550000;
+    
+    /* Set fields. */
+    p_fsinfo->free_count = 261626;
+    p_fsinfo->next_free = 2;
 }
 
 
@@ -325,7 +400,7 @@ void DRV_FAT12_AsyncRead
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
     void *targetBuffer,
-    uint32_t blockStart, /* Bloc de d?part */
+    uint32_t blockStart, /* Bloc de départ */
     uint32_t nBlock      /* Nombre de blocs */
 )
 {
@@ -351,24 +426,64 @@ void DRV_FAT12_AsyncRead
         offset += 512;
     }
     
-    /* If the host tries to read our FAT tabke, redirect to our fake FAT. */
+    /* If the host tries to read our FSInfo sector.  */
     if ((blockStart == 2) && (nBlock > 0))
     {
-        /* Generate a fake FAT sector. */
-        //DRV_FAT12_GenerateFATSector(&((unsigned char *)targetBuffer)[offset]);
-        memcpy(&((unsigned char *)targetBuffer)[offset], g_fake_fat, 512);
+        /* Generate a fake FSInfo sector. */
+        DRV_FAT32_GenerateFSInfo(&((unsigned char *)targetBuffer)[offset]);
+        blockStart++;
+        nBlock--;
+        offset += 512;
     }
     
     /* If the host tries to read our root directory, generate on-the-fly. */
-    if ((blockStart == 3) && (nBlock > 0))
+    if ((blockStart == 7) && (nBlock > 0))
     {
-        /* Generate root directory. */
-        DRV_FAT12_GenerateRootDirectory(&((unsigned char *)targetBuffer)[offset]);
+        /* Generate a backup Volume Boot Record*/
+        DRV_FAT12_GenerateVolumeRecord(&((unsigned char *)targetBuffer)[offset]);
         blockStart++;
         nBlock--;
         offset += 512;
     }
 
+    /* If the host tries to read our root directory, generate on-the-fly. */
+    if ((blockStart == 8) && (nBlock > 0))
+    {
+        /* Generate a fake backup FSInfo sector. */
+        DRV_FAT32_GenerateFSInfo(&((unsigned char *)targetBuffer)[offset]);
+        blockStart++;
+        nBlock--;
+        offset += 512;
+    }
+    
+    /* If the host tries to read our root directory, generate on-the-fly. */
+    if ((blockStart == 9+24) && (nBlock > 0))
+    {
+        /* Generate fake FAT. */
+        memcpy(&((unsigned char *)targetBuffer)[offset], g_fake_fat, 512);
+        blockStart++;
+        nBlock--;
+        offset += 512;
+    }
+    
+    if ((blockStart == 2057+24) && (nBlock > 0))
+    {
+        /* Generate fake FAT (copy). */
+        memcpy(&((unsigned char *)targetBuffer)[offset], g_fake_fat, 512);
+        blockStart++;
+        nBlock--;
+        offset += 512;
+    }
+
+    if ((blockStart == 4105+24) && (nBlock > 0))
+    {
+        /* Generate fake FAT (copy). */
+        DRV_FAT12_GenerateRootDirectory(&((unsigned char *)targetBuffer)[offset]);
+        blockStart++;
+        nBlock--;
+        offset += 512;
+    }   
+    
     /* If the host tries to read any other block, return a buffer full of zeroes =) . */
     if (nBlock > 0)
     {
@@ -498,7 +613,7 @@ void DRV_FAT12_AsyncEraseWrite
     uint32_t page_number, block_offset, block_addr, target_addr;
     
     /* Are we writing to the FAT ? */
-    if (blockStart == 2)
+    if ((blockStart == 9) || (blockStart == 73))
     {
         memcpy(g_fake_fat, sourceBuffer, 512);
     }

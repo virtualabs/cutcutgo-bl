@@ -747,7 +747,7 @@
         <property key="memories.programmemory" value="true"/>
         <property key="memories.programmemory.ranges" value="1d000000-1d07ffff"/>
         <property key="programmerToGoFilePath"
-                  value="/home/virtualabs/projets/cutcutgo-bl/cutcutgo_bl.X/debug/cutcutgo_bl/cutcutgo_bl_ptg"/>
+                  value="/home/virtualabs/opt/Harmony3/usb_apps_device/apps/msd_basic/firmware/pic32mx470_curiosity.X/debug/pic32mx470_curiosity/pic32mx470_curiosity_ptg"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>
         <property key="programoptions.pgmentry.voltage" value="low"/>
