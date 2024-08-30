@@ -54,7 +54,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // *****************************************************************************
 
 #include "app.h"
-#include "fat12.h"
+#include "fat32.h"
 #include "led.h"
 #include "reset.h"
 
@@ -219,7 +219,7 @@ void APP_Tasks ( void )
         case APP_STATE_RUNNING:
 
             /* If power button is pressed, reset the device, except if an upload is in progress. */
-            if (!is_fat12_upload_started())
+            if (!is_fat32_upload_started())
             {
                 if (is_power_button_pressed())
                 {

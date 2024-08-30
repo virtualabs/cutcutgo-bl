@@ -23,18 +23,18 @@ typedef SYS_MEDIA_BLOCK_COMMAND_HANDLE  DRV_MEMORY_COMMAND_HANDLE;
 #define UF2_MAGICEND    0x0AB16F30
 #define UF2_FAMILYID    0x4d414b52 /* "MAKR" */
 
-DRV_HANDLE DRV_FAT12_Open
+DRV_HANDLE DRV_FAT32_Open
 (
     const SYS_MODULE_INDEX drvIndex,
     const DRV_IO_INTENT ioIntent
 );
 
-void DRV_FAT12_Close
+void DRV_FAT32_Close
 (
     const DRV_HANDLE handle
 );
 
-void DRV_FAT12_AsyncRead
+void DRV_FAT32_AsyncRead
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -43,7 +43,7 @@ void DRV_FAT12_AsyncRead
     uint32_t nBlock
 );
 
-void DRV_FAT12_AsyncWrite
+void DRV_FAT32_AsyncWrite
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -52,7 +52,7 @@ void DRV_FAT12_AsyncWrite
     uint32_t nBlock
 );
 
-void DRV_FAT12_AsyncErase
+void DRV_FAT32_AsyncErase
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -60,7 +60,7 @@ void DRV_FAT12_AsyncErase
     uint32_t nBlock
 );
 
-void DRV_FAT12_AsyncEraseWrite
+void DRV_FAT32_AsyncEraseWrite
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -69,34 +69,34 @@ void DRV_FAT12_AsyncEraseWrite
     uint32_t nBlock
 );
 
-void DRV_FAT12_TransferHandlerSet
+void DRV_FAT32_TransferHandlerSet
 (
     const DRV_HANDLE handle,
     const void * transferHandler,
     const uintptr_t context
 );
 
-SYS_MEDIA_GEOMETRY * DRV_FAT12_GeometryGet
+SYS_MEDIA_GEOMETRY * DRV_FAT32_GeometryGet
 (
     const DRV_HANDLE handle
 );
 
-bool DRV_FAT12_IsAttached
+bool DRV_FAT32_IsAttached
 (
     const DRV_HANDLE handle
 );
 
-bool DRV_FAT12_IsWriteProtected
+bool DRV_FAT32_IsWriteProtected
 (
     const DRV_HANDLE handle
 );
 
-uintptr_t DRV_FAT12_AddressGet
+uintptr_t DRV_FAT32_AddressGet
 (
     const DRV_HANDLE handle
 );
 
-bool is_fat12_upload_started(void);
+bool is_fat32_upload_started(void);
 
 #ifdef	__cplusplus
 }

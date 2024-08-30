@@ -46,7 +46,7 @@
 
 #include "configuration.h"
 #include "definitions.h"
-#include "fat12.h"
+#include "fat32.h"
 /**************************************************
  * USB Device Function Driver Init Data
  **************************************************/
@@ -107,14 +107,14 @@ USB_DEVICE_MSD_MEDIA_INIT_DATA USB_ALIGN  msdMediaInit0[1] =
             DRV_MEMORY_TransferHandlerSet,
             NULL
             */
-            DRV_FAT12_IsAttached,
-            DRV_FAT12_Open,
-            DRV_FAT12_Close,
-            DRV_FAT12_GeometryGet,
-            DRV_FAT12_AsyncRead,
-            DRV_FAT12_AsyncEraseWrite,
-            DRV_FAT12_IsWriteProtected,
-            DRV_FAT12_TransferHandlerSet,
+            DRV_FAT32_IsAttached,
+            DRV_FAT32_Open,
+            DRV_FAT32_Close,
+            DRV_FAT32_GeometryGet,
+            DRV_FAT32_AsyncRead,
+            DRV_FAT32_AsyncEraseWrite,
+            DRV_FAT32_IsWriteProtected,
+            DRV_FAT32_TransferHandlerSet,
             NULL
         }
     },

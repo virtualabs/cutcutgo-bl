@@ -8,7 +8,7 @@
 #include "system/system_media.h"
 #include "system/system_module.h"
 #include "driver/driver_common.h"
-#include "fat12.h"
+#include "fat32.h"
 #include "led.h"
 #include "reset.h"
 
@@ -42,7 +42,7 @@ typedef struct uf2_block {
 } uf2_block_t;
 
 /**
- * FAT12 emulation
+ * FAT32 emulation
  */
 
 typedef struct {
@@ -58,7 +58,7 @@ typedef struct __attribute__((packed)) {
     uint8_t reserved[446];
     fat12_mbr_part_info_t partitions[4];
     uint8_t signature[2];
-} fat12_mbr_t;
+} fat32_mbr_t;
 
 
 typedef struct __attribute__((packed)) {
@@ -108,7 +108,7 @@ typedef struct __attribute__((packed)) {
     uint8_t     padding[420];
     uint8_t     signature[2];
     
-} fat12_vbr_t;
+} fat32_vbr_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t     dos_name[8];
@@ -140,11 +140,9 @@ typedef struct __attribute__((packed)) {
  * Globals
  */
 
-static unsigned char *fat12_volume = (unsigned char *)DRV_MEMORY_DEVICE_START_ADDRESS;
-
-static DRV_MEMORY_TRANSFER_HANDLER gFat12_TransferHandler = NULL;
-static uintptr_t gFat12_TransferHandlerContext = 0;
-static uintptr_t gFat12_BlockStartAddress = 0;
+static DRV_MEMORY_TRANSFER_HANDLER gFat32_TransferHandler = NULL;
+static uintptr_t gFat32_TransferHandlerContext = 0;
+static uintptr_t gFat32_BlockStartAddress = 0;
 
 static uint8_t page_buffer[4096];
 
@@ -237,9 +235,9 @@ static SYS_MEDIA_GEOMETRY gFat12_MediaGeometry = {
  * @param buffer    Buffer corresponding to the MBR sector that is read
  */
 
-void DRV_FAT12_GenerateMBR(unsigned char *buffer)
+void DRV_FAT32_GenerateMBR(unsigned char *buffer)
 {
-    fat12_mbr_t *p_mbr = (fat12_mbr_t *)buffer;
+    fat32_mbr_t *p_mbr = (fat32_mbr_t *)buffer;
     
     /* Fill buffer with the correct values. */
     memset(buffer, 0, 512);
@@ -266,9 +264,9 @@ void DRV_FAT12_GenerateMBR(unsigned char *buffer)
  * @param buffer    Buffer corresponding to the volume record sector that is read
  */
 
-void DRV_FAT12_GenerateVolumeRecord(unsigned char *buffer)
+void DRV_FAT32_GenerateVolumeRecord(unsigned char *buffer)
 {
-    fat12_vbr_t *p_vbr = (fat12_vbr_t *)buffer;
+    fat32_vbr_t *p_vbr = (fat32_vbr_t *)buffer;
     
     /* Fill buffer with the correct values. */
     memset(buffer, 0, 90);
@@ -341,14 +339,14 @@ void DRV_FAT32_GenerateFSInfo(unsigned char *buffer)
 
 
 /**
- * FAT12 Root directory generation
+ * FAT32 Root directory generation
  * 
  * Fill the provided buffer with our fake root directory.
  * 
  * @param buffer    Buffer corresponding to the root directory sector that is read
  */
 
-void DRV_FAT12_GenerateRootDirectory(unsigned char *buffer)
+void DRV_FAT32_GenerateRootDirectory(unsigned char *buffer)
 {
     fat12_rootdir_t *p_rootdir = (fat12_rootdir_t *)buffer;
     
@@ -367,7 +365,7 @@ void DRV_FAT12_GenerateRootDirectory(unsigned char *buffer)
 // *****************************************************************************
 // *****************************************************************************
 
-DRV_HANDLE DRV_FAT12_Open
+DRV_HANDLE DRV_FAT32_Open
 (
     const SYS_MODULE_INDEX drvIndex,
     const DRV_IO_INTENT ioIntent
@@ -377,7 +375,7 @@ DRV_HANDLE DRV_FAT12_Open
     return 0x4242424;
 }
 
-void DRV_FAT12_Close
+void DRV_FAT32_Close
 (
     const DRV_HANDLE handle
 )
@@ -395,7 +393,7 @@ void DRV_FAT12_Close
  * @param nBlock        Number of blocks to read (basically, 1)
  */
 
-void DRV_FAT12_AsyncRead
+void DRV_FAT32_AsyncRead
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -410,7 +408,7 @@ void DRV_FAT12_AsyncRead
     if ((blockStart == 0) && (nBlock > 0))
     {
         /* Generate MBR */
-        DRV_FAT12_GenerateMBR(targetBuffer);
+        DRV_FAT32_GenerateMBR(targetBuffer);
         blockStart++;
         nBlock--;
         offset += 512;
@@ -420,7 +418,7 @@ void DRV_FAT12_AsyncRead
     if ((blockStart == 1) && (nBlock > 0))
     {
         /* Generate Volume Boot Record*/
-        DRV_FAT12_GenerateVolumeRecord(&((unsigned char *)targetBuffer)[offset]);
+        DRV_FAT32_GenerateVolumeRecord(&((unsigned char *)targetBuffer)[offset]);
         blockStart++;
         nBlock--;
         offset += 512;
@@ -440,7 +438,7 @@ void DRV_FAT12_AsyncRead
     if ((blockStart == 7) && (nBlock > 0))
     {
         /* Generate a backup Volume Boot Record*/
-        DRV_FAT12_GenerateVolumeRecord(&((unsigned char *)targetBuffer)[offset]);
+        DRV_FAT32_GenerateVolumeRecord(&((unsigned char *)targetBuffer)[offset]);
         blockStart++;
         nBlock--;
         offset += 512;
@@ -478,7 +476,7 @@ void DRV_FAT12_AsyncRead
     if ((blockStart == 4105+24) && (nBlock > 0))
     {
         /* Generate fake FAT (copy). */
-        DRV_FAT12_GenerateRootDirectory(&((unsigned char *)targetBuffer)[offset]);
+        DRV_FAT32_GenerateRootDirectory(&((unsigned char *)targetBuffer)[offset]);
         blockStart++;
         nBlock--;
         offset += 512;
@@ -488,18 +486,17 @@ void DRV_FAT12_AsyncRead
     if (nBlock > 0)
     {
         /* Handle block read. */
-        //memcpy(&((unsigned char *)targetBuffer)[offset], &fat12_volume[blockStart*512], nBlock*512);
         memset(&((unsigned char *)targetBuffer)[offset], 0, nBlock*512);
     }
     
     *commandHandle = 0x42;
         
-    if (gFat12_TransferHandler != NULL)
+    if (gFat32_TransferHandler != NULL)
     {
-        gFat12_TransferHandler(
+        gFat32_TransferHandler(
             SYS_MEDIA_EVENT_BLOCK_COMMAND_COMPLETE,
             0x42,
-            gFat12_TransferHandlerContext
+            gFat32_TransferHandlerContext
         );
     }
 }
@@ -517,7 +514,7 @@ void DRV_FAT12_AsyncRead
  * @param nBlock
  */
 
-void DRV_FAT12_AsyncWrite
+void DRV_FAT32_AsyncWrite
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -541,12 +538,12 @@ void DRV_FAT12_AsyncWrite
     /* Handle block write. */
     *commandHandle = 0x42;
     
-    if (gFat12_TransferHandler != NULL)
+    if (gFat32_TransferHandler != NULL)
     {
-        gFat12_TransferHandler(
+        gFat32_TransferHandler(
             SYS_MEDIA_EVENT_BLOCK_COMMAND_COMPLETE,
             0x42,
-            gFat12_TransferHandlerContext
+            gFat32_TransferHandlerContext
         );
     }
 }
@@ -562,7 +559,7 @@ void DRV_FAT12_AsyncWrite
  * @param nBlock
  */
 
-void DRV_FAT12_AsyncErase
+void DRV_FAT32_AsyncErase
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -573,12 +570,12 @@ void DRV_FAT12_AsyncErase
     /* Handle erase. */
     *commandHandle = 0x42;
     
-    if (gFat12_TransferHandler != NULL)
+    if (gFat32_TransferHandler != NULL)
     {
-        gFat12_TransferHandler(
+        gFat32_TransferHandler(
             SYS_MEDIA_EVENT_BLOCK_COMMAND_COMPLETE,
             0x42,
-            gFat12_TransferHandlerContext
+            gFat32_TransferHandlerContext
         );
     }
 }
@@ -600,7 +597,7 @@ void DRV_FAT12_AsyncErase
  * @param nBlock            Number of blocks to write (basically, 1)
  */
 
-void DRV_FAT12_AsyncEraseWrite
+void DRV_FAT32_AsyncEraseWrite
 (
     const DRV_HANDLE handle,
     DRV_MEMORY_COMMAND_HANDLE *commandHandle,
@@ -638,7 +635,7 @@ void DRV_FAT12_AsyncEraseWrite
             /* Make sure we are going to overwrite the application memory. */
             if ((uf2_block->targetAddr >= 0x1D010000) && (uf2_block->targetAddr < 0x1D080000))
             {
-
+                
                 /* Write the UF2 block in flash memory (synchronous). */
                 target_addr = uf2_block->targetAddr - 0x1D010000;
 
@@ -693,12 +690,12 @@ void DRV_FAT12_AsyncEraseWrite
     /* Handle erase + write. */
     *commandHandle = 0x42;
     
-    if (gFat12_TransferHandler != NULL)
+    if (gFat32_TransferHandler != NULL)
     {
-        gFat12_TransferHandler(
+        gFat32_TransferHandler(
             SYS_MEDIA_EVENT_BLOCK_COMMAND_COMPLETE,
             0x42,
-            gFat12_TransferHandlerContext
+            gFat32_TransferHandlerContext
         );
     }
 }
@@ -717,7 +714,7 @@ void DRV_FAT12_AsyncEraseWrite
  * @param context
  */
 
-void DRV_FAT12_TransferHandlerSet
+void DRV_FAT32_TransferHandlerSet
 (
     const DRV_HANDLE handle,
     const void * transferHandler,
@@ -725,15 +722,15 @@ void DRV_FAT12_TransferHandlerSet
 )
 {   
     /* Set the event handler */
-    gFat12_TransferHandler = (DRV_MEMORY_TRANSFER_HANDLER)transferHandler;
-    gFat12_TransferHandlerContext = context;
+    gFat32_TransferHandler = (DRV_MEMORY_TRANSFER_HANDLER)transferHandler;
+    gFat32_TransferHandlerContext = context;
 }
 
 /**
  * Return the drive geometry.
  */
 
-SYS_MEDIA_GEOMETRY * DRV_FAT12_GeometryGet
+SYS_MEDIA_GEOMETRY * DRV_FAT32_GeometryGet
 (
     const DRV_HANDLE handle
 )
@@ -745,7 +742,7 @@ SYS_MEDIA_GEOMETRY * DRV_FAT12_GeometryGet
  * Detect if the drive is attached (by default, always)
  */
 
-bool DRV_FAT12_IsAttached
+bool DRV_FAT32_IsAttached
 (
     const DRV_HANDLE handle
 )
@@ -757,7 +754,7 @@ bool DRV_FAT12_IsAttached
  * Detect if the drive is write-protected (by default, never)
  */
 
-bool DRV_FAT12_IsWriteProtected
+bool DRV_FAT32_IsWriteProtected
 (
     const DRV_HANDLE handle
 )
@@ -770,12 +767,12 @@ bool DRV_FAT12_IsWriteProtected
  * Return the Start block address.
  */
 
-uintptr_t DRV_FAT12_AddressGet
+uintptr_t DRV_FAT32_AddressGet
 (
     const DRV_HANDLE handle
 )
 {
-    return gFat12_BlockStartAddress;
+    return gFat32_BlockStartAddress;
 }
 
 
@@ -784,7 +781,7 @@ uintptr_t DRV_FAT12_AddressGet
  * 
  * @return true if we are writing an application into flash, false otherwise.
  */
-bool is_fat12_upload_started(void)
+bool is_fat32_upload_started(void)
 {
     return (g_nb_blocks_expected != 0);
 }
