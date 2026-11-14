@@ -1,20 +1,20 @@
-# cutcutgo-bl: an open-source bootloader for Cricut Maker3
+# cutcutgo-bl: an open-source bootloader for Cricut Maker3 and Explore3
 
 ## Bootloader features
 
-This bootloader lets you flash [custom firmware](https://github.com/DnG-Crafts/cutcutgo) to the Cricut Maker3 over USB. When it runs, it appears on the computer as a mass-storage drive, and you drag and drop a compatible firmware file (UF2 format) onto it.
+This bootloader lets you flash [custom firmware](https://github.com/DnG-Crafts/cutcutgo) to the Cricut Maker3/Explore3 over USB. When it runs, it appears on the computer as a mass-storage drive, and you drag and drop a compatible firmware file (UF2 format) onto it.
 
 When no application is installed, the bootloader starts the drive automatically and waits for a UF2 file.
 
 Only UF2 firmware files are supported.
 
-This branch is a port to the **Cricut Maker 3** (main board SCM-84-100-X7, **PIC32MK1024MCF100**). It is built and tested on that machine. The original bootloader, for the Cricut Maker's PIC32MX, is [virtualabs/cutcutgo-bl](https://github.com/virtualabs/cutcutgo-bl).
+This branch is a port to the **Cricut Maker 3** (main board SCM-84-100-X7, **PIC32MK1024MCF100**) and **Cricut Explore 3** (main board VLD-84-100-X5, **PIC32MK1024MCF100**). It is built and tested on those machines. The original bootloader, for the Cricut Maker's PIC32MX, is [virtualabs/cutcutgo-bl](https://github.com/virtualabs/cutcutgo-bl).
 
-## Using it on the Maker 3
+## Using it on the Maker 3 or Explore3
 
 | Action | How |
 |---|---|
-| Power on | Hold **Power** for about 3 s. |
+| Power on | Hold **Power** for about 1 s. |
 | Enter update mode | Hold **Pause** while powering on. Update mode also starts by itself when no firmware is installed. |
 | Update the firmware | Copy a `.uf2` file onto the drive that appears. |
 | Leave update mode without updating | Hold **Power** for about 4 s (only while no upload is in progress). |
@@ -63,7 +63,7 @@ Firmware built for the original Maker's PIC32MX uses a different family ID (`0x4
 | Button hold timing | busy-loop counts | core timer (3 s at boot, 4 s to reset) |
 | End of upload | reset straight after the last block | waits for the last block to be acknowledged and the PC to stop writing |
 
-### Pins (Cricut Maker 3 main board SCM-84-100-X7)
+### Pins (Cricut Maker 3 main board SCM-84-100-X7 | Explore 3 main board VLD-84-100-X5)
 
 Buttons (all active low, with pull-ups on the board):
 
@@ -85,9 +85,6 @@ LEDs (all active high):
 | Play, white | RD13 |
 | Pause, blue | RD14 |
 
-The white carriage light is on RG7 (on when driven low). The bootloader doesn't use it.
-
-**Never drive RB10:** it moves the blade-down actuator. It was the "pause LED" in the original PIC32MX Cricut Maker pin map.
 
 USB uses the USB1 module (D1+/D1-, pins 57/56), with VBUS sensing on pin 54. On this chip the USB PLL "ready" flag (`CLKSTAT.UPLLRDY`) never sets, even though USB works, so the clock code gives the PLLs a fixed time to lock rather than waiting for it.
 

@@ -59,7 +59,7 @@
 
 
 /* How long the power button must be held at startup. */
-#define POWER_HOLD_MS           3000UL
+#define POWER_HOLD_MS           1000UL
 #define POWER_HOLD_TICKS        ((CORE_TIMER_FREQ_HZ / 1000UL) * POWER_HOLD_MS)
 
 /* Accumulated time (core timer ticks) the power button has been held. */
@@ -152,7 +152,7 @@ int main ( void )
         {
             pwr_counter += (now - last);
 
-            /* Power button must be pressed during ~3 seconds. */
+            /* Power button must be pressed during ~1 second. */
             if (pwr_counter >= POWER_HOLD_TICKS)
             {
                 break;
