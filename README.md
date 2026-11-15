@@ -10,7 +10,7 @@ Only UF2 firmware files are supported.
 
 This branch is a port to the **Cricut Maker 3** (main board SCM-84-100-X7, **PIC32MK1024MCF100**) and **Cricut Explore 3** (main board VLD-84-100-X5, **PIC32MK1024MCF100**). It is built and tested on those machines. The original bootloader, for the Cricut Maker's PIC32MX, is [virtualabs/cutcutgo-bl](https://github.com/virtualabs/cutcutgo-bl).
 
-## Using it on the Maker 3 or Explore3
+## Using it on the Maker 3 or Explore 3
 
 | Action | How |
 |---|---|
@@ -27,7 +27,6 @@ The **Power** ring shows what is happening:
 | Purple | Firmware blocks being written |
 | Red | All blocks written; the bootloader restarts into the new firmware about a second later |
 
-The bootloader waits until the computer has finished writing before it restarts. That stops Windows from reporting the drive as missing (error 0x800701B1) at the end of the copy.
 
 ## How to build
 
@@ -90,17 +89,13 @@ USB uses the USB1 module (D1+/D1-, pins 57/56), with VBUS sensing on pin 54. On 
 
 
 ## Download Boolloader
-The latest pre-compiled maker3 compatible bootloader is available on this [Release page](https://github.com/DnG-Crafts/cutcutgo-bl/releases)
+The latest pre-compiled compatible bootloader is available on this [Release page](https://github.com/DnG-Crafts/cutcutgo-bl/releases)
 
 
 ## Download Firmware
-The latest pre-compiled maker3 compatible firmware is available on this [Release page](https://github.com/DnG-Crafts/cutcutgo/releases)
+The latest pre-compiled compatible firmware is available on this [Release page](https://github.com/DnG-Crafts/cutcutgo/releases)
 
 
 ## Download CutCraft
-The latest pre-compiled design and send software with maker3(cutcutgo) support is available on this [Release page](https://github.com/DnG-Crafts/CutCraft/releases)
+The latest pre-compiled design and send software with cutcutgo support is available on this [Release page](https://github.com/DnG-Crafts/CutCraft/releases)
 
-
-### Not done
-
-- The MCC/Harmony project files (`.mc3`, `.mhc`) for the MX470 were removed. The config code was ported by hand, so regenerating it with MCC is not set up.
