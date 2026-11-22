@@ -1,23 +1,36 @@
 #!/bin/bash
-# Command-line build of cutcutgo-bl for PIC32MK1024MCF100 (no MPLAB X needed).
-# Mirrors the settings in cutcutgo_bl.X/nbproject/configurations.xml.
-# Usage (Git Bash):  ./build.sh      ->  build/cutcutgo_bl_pic32mk1024mcf100.hex
+# Command-line build of cutcutgo-bl (no MPLAB X needed).
+# Usage (Git Bash):
+#   ./build.sh          Maker 3 / Explore 3 (PIC32MK1024MCF100) -> build/cutcutgo_bl_pic32mk1024mcf100.hex
+#   ./build.sh maker    original Cricut Maker (PIC32MX470F512L)  -> build/cutcutgo_bl_pic32mx470f512l.hex
 # Override tool locations with XC32_DIR / DFP_DIR if yours differ.
 set -euo pipefail
 
+BOARD="${1:-maker3}"
+PACKS="/c/Program Files/Microchip/MPLABX/v6.20/packs/Microchip"
 XC32_DIR="${XC32_DIR:-/c/Program Files/Microchip/xc32/v5.10}"
-DFP_DIR="${DFP_DIR:-/c/Program Files/Microchip/MPLABX/v6.20/packs/Microchip/PIC32MK-MC_DFP/1.11.151}"
+case "$BOARD" in
+  maker3|explore3)
+    DFP_DIR="${DFP_DIR:-$PACKS/PIC32MK-MC_DFP/1.11.151}"
+    CPU=32MK1024MCF100; CFG_NAME=pic32mk_mcf100; LD=p32MK1024MCF100.ld
+    NAME="cutcutgo_bl_pic32mk1024mcf100" ;;
+  maker)
+    DFP_DIR="${DFP_DIR:-$PACKS/PIC32MX_DFP/1.5.259}"
+    CPU=32MX470F512L; CFG_NAME=pic32mx470_curiosity; LD=p32MX470F512H.ld   # as in virtualabs/cutcutgo-bl
+    NAME="cutcutgo_bl_pic32mx470f512l" ;;
+  *) echo "usage: $0 [maker3|explore3|maker]" >&2; exit 1 ;;
+esac
 CC="$XC32_DIR/bin/xc32-gcc"
 BIN2HEX="$XC32_DIR/bin/xc32-bin2hex"
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PRJ="$ROOT/cutcutgo_bl.X"
-CFG="src/config/pic32mk_mcf100"
-NAME="cutcutgo_bl_pic32mk1024mcf100"
+CFG="src/config/$CFG_NAME"
 OUT="$ROOT/build"
-mkdir -p "$OUT/obj"
+OBJ="$OUT/obj/$CFG_NAME"   # one object folder per chip: the shared sources compile differently
+mkdir -p "$OBJ"
 
-COMMON=(-mprocessor=32MK1024MCF100 "-mdfp=$DFP_DIR")
+COMMON=(-mprocessor=$CPU "-mdfp=$DFP_DIR")
 CFLAGS=("${COMMON[@]}" -g -O2 -fno-common -ffunction-sections -fdata-sections
         -I"$PRJ/src" -I"$PRJ/$CFG" -Werror-implicit-function-declaration)
 
@@ -45,7 +58,7 @@ SRCS=(
 OBJS=()
 cd "$PRJ"
 for s in "${SRCS[@]}"; do
-  o="$OUT/obj/$(echo "$s" | tr '/' '_' ).o"
+  o="$OBJ/$(echo "$s" | tr '/' '_' ).o"
   echo "CC  $s"
   "$CC" "${CFLAGS[@]}" -c "$s" -o "$o"
   OBJS+=("$o")
@@ -57,7 +70,7 @@ done
 ELF="$OUT/$NAME.elf"
 echo "LD  $ELF"
 "$CC" "${COMMON[@]}" -o "$ELF" "${OBJS[@]}" \
-  -Wl,--script="$PRJ/$CFG/p32MK1024MCF100.ld" \
-  -Wl,--defsym=_min_heap_size=512,--gc-sections,-Map="$OUT/cutcutgo_bl.map"
+  -Wl,--script="$PRJ/$CFG/$LD" \
+  -Wl,--defsym=_min_heap_size=512,--gc-sections,-Map="$OUT/$NAME.map"
 "$BIN2HEX" "$ELF"
 echo "HEX ${ELF%.elf}.hex"

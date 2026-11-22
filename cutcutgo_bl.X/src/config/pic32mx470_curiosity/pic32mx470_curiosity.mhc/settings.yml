@@ -1,0 +1,14 @@
+configName: pic32mx470_curiosity
+folderName: pic32mx470_curiosity
+format_version: v1.0
+frameworkPath: ..\..\..
+processor: PIC32MX470F512L
+projectName: msd_basic_pic32mx470_curiosity
+settings:
+  PackageFilter: csp;core;csp_apps_pic32mx;harmony-services;quick_docs;motor_control;Devices;core_apps_pic32mx;mc_apps_pic32mk;usb_apps_dual_role;bsp;usb;usb_apps_device;usb_apps_host;usb_apps_multi_controller;dev_packs
+  FORCE_OPTIMIZATION: 'false'
+  GENERATE_BACKUP: 'true'
+  TRUSTZONE: 'false'
+  CMSISPath: ./dev_packs/arm/CMSIS/5.8.0
+  MERGE_STRATEGY: USER_ALL
+  DFPPath: ./dev_packs/Microchip/PIC32MX_DFP/1.5.259/atdf/PIC32MX470F512L.atdf

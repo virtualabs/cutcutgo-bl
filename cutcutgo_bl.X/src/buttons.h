@@ -7,22 +7,8 @@
 #include "configuration.h"
 #include "definitions.h"
 
-/*
- * Front-panel buttons, Cricut Maker 3 main board (SCM-84-100-X7,
- * PIC32MK1024MCF100). Found by watching each input pin while pressing:
- * all are active low, with external pull-ups on the board.
- *
- *   Power           RF13
- *   Load/Unload     RF12
- *   Cricut logo     RE15
- *   Pause           RE14
- *
- * buttons.c derives everything (port, analog select) from these values.
- */
-#define     BTN_POWER       GPIO_PIN_RF13
-#define     BTN_LOADUNLOAD  GPIO_PIN_RF12
-#define     BTN_LOGO        GPIO_PIN_RE15
-#define     BTN_PAUSE       GPIO_PIN_RE14
+/* Button pins: see board.h in the config folder of the board being built. */
+#include "board.h"
 
 #ifndef BUTTONS_H
 #define	BUTTONS_H

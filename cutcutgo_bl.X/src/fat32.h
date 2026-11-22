@@ -21,18 +21,8 @@ typedef SYS_MEDIA_BLOCK_COMMAND_HANDLE  DRV_MEMORY_COMMAND_HANDLE;
 #define UF2_MAGIC0      0x0A324655
 #define UF2_MAGIC1      0x9E5D5157
 #define UF2_MAGICEND    0x0AB16F30
-/*
- * UF2 family ID accepted by this bootloader.
- * The original PIC32MX Cricut Maker bootloader uses 0x4d414b52 ("MAKR").
- * This PIC32MK1024MCF100 port uses its own ID so that firmware built for the
- * PIC32MX is rejected instead of being flashed onto an incompatible chip.
- * Generate application UF2 files with this family ID.
- */
-#define UF2_FAMILYID    0x4d4b4d43 /* "MKMC" */
-
-/* Application flash window (physical addresses). PIC32MK1024: 1 MB PFM. */
-#define APP_FLASH_START_PA      0x1D010000UL
-#define APP_FLASH_END_PA        0x1D100000UL   /* exclusive */
+/* UF2_FAMILYID and the application flash window are in board.h. */
+#include "board.h"
 
 DRV_HANDLE DRV_FAT32_Open
 (

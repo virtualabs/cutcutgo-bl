@@ -26,7 +26,7 @@ static void led_write(GPIO_PIN pin, bool on)
 }
 
 /**
- * Cricut Maker 3 front-panel LED initialization (all off).
+ * Front-panel LED initialization (all off).
  */
 void led_init(void)
 {

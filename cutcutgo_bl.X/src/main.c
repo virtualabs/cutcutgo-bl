@@ -58,8 +58,8 @@
 #define WORD_ALIGN_MASK         (~(sizeof(uint32_t) - 1))
 
 
-/* How long the power button must be held at startup. */
-#define POWER_HOLD_MS           1000UL
+/* How long the power button must be held at startup: POWER_HOLD_MS, in board.h. */
+#include "board.h"
 #define POWER_HOLD_TICKS        ((CORE_TIMER_FREQ_HZ / 1000UL) * POWER_HOLD_MS)
 
 /* Accumulated time (core timer ticks) the power button has been held. */
